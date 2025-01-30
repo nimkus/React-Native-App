@@ -6,7 +6,7 @@ const Start = ({ navigation }) => {
   // State for setting the username to be displayed in the chat
   const [name, setName] = useState('');
   // State for changing background color of the chat
-  const [chatBgColor, setChatBgColor] = useState('');
+  const [chatBgColor, setChatBgColor] = useState('#090C08');
   // State to handle showing the warning message
   const [showWarning, setShowWarning] = useState(false);
 
@@ -50,7 +50,7 @@ const Start = ({ navigation }) => {
         resizeMode="cover"
         style={styles.backgroundImage}
       >
-        <Text style={styles.appTitle}>App Title</Text>
+        <Text style={styles.appTitle}>Chatter</Text>
 
         <View style={styles.InputField}>
           <TextInput
@@ -70,7 +70,7 @@ const Start = ({ navigation }) => {
           <View>
             <Text style={[styles.text, { marginBottom: 10 }]}>Choose Background Color:</Text>
             <View style={styles.colorContainer}>
-              {['#f69284', '#f0b892', '#587a8f', '#3f2b44'].map((color) => (
+              {['#090C08', '#474056', '#8A95A5', '#B9C6AE'].map((color) => (
                 <TouchableOpacity
                   key={color}
                   style={[
@@ -88,7 +88,7 @@ const Start = ({ navigation }) => {
             onPress={handleStartChat} // Call the new handler
             style={styles.chatButton}
           >
-            <Text style={[styles.text, { color: 'white', fontWeight: 'bold' }]}>Start Chatting</Text>
+            <Text style={[styles.text, { color: '#fff', fontFamily: 'Poppins-Bold' }]}>Start Chatting</Text>
           </TouchableOpacity>
         </View>
       </ImageBackground>
@@ -108,14 +108,15 @@ const styles = StyleSheet.create({
   appTitle: {
     fontFamily: 'Poppins-Bold',
     color: 'white',
-    fontSize: 42,
+    fontSize: 45,
     lineHeight: 84,
     textAlign: 'center',
     marginTop: '20%',
   },
   text: {
     fontFamily: 'Poppins-Regular',
-    fontSize: 18,
+    fontSize: 16,
+    color: '#757083',
   },
   InputField: {
     width: '88%',
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#665a72',
+    backgroundColor: '#757083',
   },
   colorContainer: {
     flexDirection: 'row',
@@ -144,12 +145,11 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 50,
-    backgroundColor: 'blue',
     marginRight: 10,
   },
   selectedCircle: {
-    borderWidth: 2,
-    borderColor: 'black', // You can change this to a color of your choice
+    borderWidth: 3,
+    borderColor: '#909090',
   },
   warningContainer: {
     backgroundColor: '#ffcccb', // Light red background for warning

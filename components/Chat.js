@@ -10,11 +10,7 @@ const Chat = ({ route, navigation }) => {
     navigation.setOptions({ title: name });
   }, []);
 
-  return (
-    <View style={[styles.container, { backgroundColor: chatBgColor }]}>
-      <Text>Hello Screen2!</Text>
-    </View>
-  );
+  return <View style={[styles.container, { backgroundColor: chatBgColor }]}></View>;
 };
 
 const styles = StyleSheet.create({
