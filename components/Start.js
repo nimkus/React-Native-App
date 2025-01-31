@@ -1,7 +1,17 @@
 import { useState } from 'react';
 import { useFonts } from 'expo-font';
-import { StyleSheet, View, Text, ImageBackground, TouchableOpacity, TextInput } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ImageBackground,
+  TouchableOpacity,
+  Platform,
+  KeyboardAvoidingView,
+  TextInput,
+} from 'react-native';
 
+// The start screen allows users to enter their name and choose the bg-color of the chat screen
 const Start = ({ navigation }) => {
   // State for setting the username to be displayed in the chat
   const [name, setName] = useState('');
@@ -92,6 +102,7 @@ const Start = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ImageBackground>
+      {Platform.OS === 'ios' ? <KeyboardAvoidingView behavior="padding" /> : null}
     </View>
   );
 };
@@ -127,8 +138,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   nameInput: {
-    height: '20%',
-    padding: 15,
+    height: '55',
+    paddingLeft: 10,
     borderWidth: 1,
   },
   chatButton: {
