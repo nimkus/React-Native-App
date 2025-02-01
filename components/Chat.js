@@ -6,12 +6,20 @@ import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 // Expo AV for handling audio
 import { Audio } from 'expo-av';
 
-const Chat = ({ route, navigation }) => {
+const Chat = ({ route, navigation, db }) => {
   // Getting username and bg-color entered in the start screen
   const { name, chatBgColor } = route.params;
+
+  // state for messages of the chat
+  const [messages, setMessages] = useState([]);
+  // state for the message input
+  const [text, setText] = useState('');
+  // state for recording audio messages
+  const [recording, setRecording] = useState(null);
+
   // state for setting the colors of the ui depending on the chosen bg-color
   const [colorRightBubble, setColorRightBubble] = useState('#F6E71D');
-  const [systemText, setSystemText] = useState();
+  //const [systemTextColor, setSystemTextColor] = useState();
 
   // color theme for the chat
   const backgroundColors = [
@@ -29,13 +37,6 @@ const Chat = ({ route, navigation }) => {
   ];
 
   const colorLeftBubble = '#EAEAEA'; // Off-white
-
-  // state for messages of the chat
-  const [messages, setMessages] = useState([]);
-  // state for the message input
-  const [text, setText] = useState('');
-  // state for recording audio messages
-  const [recording, setRecording] = useState(null);
 
   const onSend = (newMessages = []) => {
     setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
