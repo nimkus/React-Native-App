@@ -2,13 +2,40 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Platform, KeyboardAvoidingView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Import Gifted Chat library
-import { GiftedChat, Bubble, InputToolbar } from 'react-native-gifted-chat';
+import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 // Expo AV for handling audio
 import { Audio } from 'expo-av';
 
 const Chat = ({ route, navigation }) => {
   // Getting username and bg-color entered in the start screen
   const { name, chatBgColor } = route.params;
+  // state for setting the colors of the ui depending on the chosen bg-color
+  const [colorRightBubble, setColorRightBubble] = useState('#F6E71D');
+  const [systemText, setSystemText] = useState();
+
+  // color theme for the chat
+  const backgroundColors = [
+    '#B9C6AE', // Light Green
+    '#8A95A5', // Grayish Blue
+    '#474056', // Dark Purple
+    '#181818', // Black
+  ];
+
+  const speechBubbleColors = [
+    '#2E5E2E', // Deep Forest Green
+    '#2C455F', // Dark Grey-Blue
+    '#AE8FCD', // Soft Lavender
+    '#E1A21D', // Gold Yellow
+  ];
+
+  // color theme: set the color of the speech bubbles according to chatBgColor
+  useEffect(() => {
+    // Find the index of the selected background color
+    const index = backgroundColors.indexOf(chatBgColor);
+
+    // Set the corresponding speech bubble color or default to orange
+    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
+  }, []);
 
   // state for messages of the chat
   const [messages, setMessages] = useState([]);
@@ -32,6 +59,12 @@ const Chat = ({ route, navigation }) => {
           name: 'React Native',
           avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
         },
+      },
+      {
+        _id: 2,
+        text: 'This is a system message',
+        createdAt: new Date(),
+        system: true,
       },
     ]);
   }, []);
@@ -105,7 +138,7 @@ const Chat = ({ route, navigation }) => {
         <Bubble
           {...props}
           wrapperStyle={{
-            right: { backgroundColor: '#0078FF' },
+            right: { backgroundColor: colorRightBubble },
             left: { backgroundColor: '#EAEAEA' },
           }}
           renderMessage={() => (
@@ -116,14 +149,26 @@ const Chat = ({ route, navigation }) => {
         />
       );
     }
-    return <Bubble {...props} />;
+    return (
+      <Bubble
+        {...props}
+        wrapperStyle={{
+          right: { backgroundColor: colorRightBubble },
+          left: { backgroundColor: '#EAEAEA' },
+        }}
+        hh
+      />
+    );
   };
 
   // Custom Input Toolbar with Audio Button
   const renderInputToolbar = (props) => {
     return (
       <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={recording ? stopRecording : startRecording} style={styles.audioButton}>
+        <TouchableOpacity
+          onPress={recording ? stopRecording : startRecording}
+          style={[styles.audioButton, { backgroundColor: colorRightBubble }]}
+        >
           <Text style={styles.audioButtonText}>{recording ? '■ Stop' : '🎤'}</Text>
         </TouchableOpacity>
 
@@ -174,7 +219,6 @@ const styles = StyleSheet.create({
   },
   audioBubble: {
     padding: 10,
-    backgroundColor: '#0078FF',
     borderRadius: 10,
     alignItems: 'center',
   },
@@ -190,7 +234,6 @@ const styles = StyleSheet.create({
   },
   audioButton: {
     padding: 12,
-    backgroundColor: '#0078FF',
     borderRadius: 50,
     marginRight: 10,
     alignItems: 'center',

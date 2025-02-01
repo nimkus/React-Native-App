@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import {
   StyleSheet,
@@ -15,8 +15,9 @@ import {
 const Start = ({ navigation }) => {
   // State for setting the username to be displayed in the chat
   const [name, setName] = useState('');
-  // State for changing background color of the chat
-  const [chatBgColor, setChatBgColor] = useState('#090C08');
+  // Chat Colors: State for changing bg-color and speech bubble color
+  const [chatBgColor, setChatBgColor] = useState('#8A95A5');
+  const [colorRightBubble, setColorRightBubble] = useState('#2C455F');
   // State to handle showing the warning message
   const [showWarning, setShowWarning] = useState(false);
 
@@ -29,6 +30,30 @@ const Start = ({ navigation }) => {
   if (!fontsLoaded) {
     return null; // Render nothing until fonts are loaded
   }
+
+  // color theme for the chat
+  const backgroundColors = [
+    '#B9C6AE', // Light Green
+    '#8A95A5', // Grayish Blue
+    '#474056', // Dark Purple
+    '#181818', // Black
+  ];
+
+  const speechBubbleColors = [
+    '#2E5E2E', // Deep Forest Green
+    '#2C455F', // Dark Grey-Blue
+    '#AE8FCD', // Soft Lavender
+    '#E1A21D', // Gold Yellow
+  ];
+
+  // color theme: set the color of the speech bubbles according to chatBgColor
+  useEffect(() => {
+    // Find the index of the selected background color
+    const index = backgroundColors.indexOf(chatBgColor);
+
+    // Set the corresponding speech bubble color or default to orange
+    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
+  }, [chatBgColor]);
 
   // Function to handle circle selection
   const handleCirclePress = (color) => {
@@ -80,13 +105,13 @@ const Start = ({ navigation }) => {
           <View>
             <Text style={[styles.text, { marginBottom: 10 }]}>Choose Background Color:</Text>
             <View style={styles.colorContainer}>
-              {['#090C08', '#474056', '#8A95A5', '#B9C6AE'].map((color) => (
+              {backgroundColors.map((color) => (
                 <TouchableOpacity
                   key={color}
                   style={[
                     styles.colorCircles,
                     { backgroundColor: color },
-                    chatBgColor === color && styles.selectedCircle, // Apply selected style
+                    chatBgColor === color && { borderWidth: 16, backgroundColor: colorRightBubble, borderColor: color }, // Apply selected style
                   ]}
                   onPress={() => handleCirclePress(color)}
                 />
@@ -158,10 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginRight: 10,
   },
-  selectedCircle: {
-    borderWidth: 3,
-    borderColor: '#909090',
-  },
+
   warningContainer: {
     backgroundColor: '#ffcccb', // Light red background for warning
     padding: 10,
