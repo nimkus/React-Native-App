@@ -81,8 +81,12 @@ const Chat = ({ route, navigation }) => {
   };
 
   const playAudio = async (audioUrl) => {
-    const { sound } = await Audio.Sound.createAsync({ uri: audioUrl });
-    await sound.playAsync();
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri: audioUrl });
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Error playing audio:', error);
+    }
   };
 
   // Render audio messages
@@ -91,7 +95,14 @@ const Chat = ({ route, navigation }) => {
 
     if (currentMessage.audio) {
       return (
-        <TouchableOpacity style={styles.audioBubble} onPress={() => playAudio(currentMessage.audio)}>
+        <TouchableOpacity
+          accessible={true}
+          accessibilityLabel="Play audio message"
+          accessibilityHint="Tap to listen to the recorded audio message."
+          accessibilityRole="button"
+          style={styles.audioBubble}
+          onPress={() => playAudio(currentMessage.audio)}
+        >
           <Text style={styles.audioText}>▶ Play Audio</Text>
         </TouchableOpacity>
       );
@@ -105,7 +116,7 @@ const Chat = ({ route, navigation }) => {
 
     if (currentMessage.system) {
       return (
-        <View style={styles.systemMessageContainer}>
+        <View style={styles.systemMessageContainer} accessibilityLiveRegion="assertive">
           <Text style={styles.systemMessageText}>{currentMessage.text}</Text>
           <Text style={styles.systemMessageDate}>{currentMessage.createdAt.toLocaleString()}</Text>
         </View>
@@ -124,16 +135,21 @@ const Chat = ({ route, navigation }) => {
           right: { backgroundColor: colorRightBubble },
           left: { backgroundColor: colorLeftBubble },
         }}
-        hh
       />
     );
   };
 
-  // Custom Input Toolbar with Audio Button
+  // Custom Input Toolbar with button to record audio message
   const renderInputToolbar = (props) => {
     return (
       <View style={styles.inputContainer}>
         <TouchableOpacity
+          accessible={true}
+          accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
+          accessibilityHint={
+            recording ? 'Tap to stop recording your audio message' : 'Tap to start recording an audio message'
+          }
+          accessibilityRole="button"
           onPress={recording ? stopRecording : startRecording}
           style={[styles.audioButton, { backgroundColor: colorRightBubble }]}
         >
@@ -142,6 +158,9 @@ const Chat = ({ route, navigation }) => {
 
         {/* Custom TextInput for typing messages */}
         <TextInput
+          accessible={true}
+          accessibilityLabel="Type a message"
+          accessibilityHint="You can type your message here."
           style={styles.textInput}
           value={text} // Bind text state to the TextInput value
           onChangeText={setText} // Update text state on change
@@ -200,7 +219,11 @@ const Chat = ({ route, navigation }) => {
   }, []);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: chatBgColor }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: chatBgColor }]}
+      accessibilityLabel="Chat screen"
+      accessibilityHint="This is the main chat screen where you can send and receive messages."
+    >
       <GiftedChat
         messages={messages}
         onSend={(messages) => onSend(messages)}
@@ -210,6 +233,8 @@ const Chat = ({ route, navigation }) => {
         renderInputToolbar={renderInputToolbar} // Custom input with audio button
         renderMessageSystem={renderMessageSystem} // Custom system messages
         alwaysShowSend
+        accessibilityLabel="Chat interface"
+        accessibilityHint="Displays and sends chat messages. You can type or send audio messages."
       />
       {Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null}
     </SafeAreaView>
@@ -253,7 +278,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 25,
     fontSize: 16,
   },
   inputToolbar: {

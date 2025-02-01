@@ -89,6 +89,9 @@ const Start = ({ navigation }) => {
 
         <View style={styles.InputField}>
           <TextInput
+            accessible={true}
+            accessibilityLabel="Enter your name"
+            accessibilityHint="Please enter your name to start chatting."
             style={[styles.nameInput, styles.text]}
             value={name}
             onChangeText={handleNameChange} // Use the new handler
@@ -97,16 +100,23 @@ const Start = ({ navigation }) => {
 
           {/* Show warning if name is empty */}
           {showWarning && (
-            <View style={styles.warningContainer}>
+            <View
+              style={styles.warningContainer}
+              accessibilityLiveRegion="assertive" // Makes sure screen readers announce this
+            >
               <Text style={styles.warningText}>Please enter your name to start chatting.</Text>
             </View>
           )}
 
           <View>
-            <Text style={[styles.text, { marginBottom: 10 }]}>Choose Background Color:</Text>
+            <Text style={[styles.text, { marginBottom: 10 }]}>Choose Chat Colors:</Text>
             <View style={styles.colorContainer}>
               {backgroundColors.map((color) => (
                 <TouchableOpacity
+                  accessible={true}
+                  accessibilityLabel="`Select color ${colorRightBubble} on ${color}`"
+                  accessibilityHint="Let’s you choose the color of the chat background and speechbubbles."
+                  accessibilityRole="button"
                   key={color}
                   style={[
                     styles.colorCircles,
@@ -120,7 +130,10 @@ const Start = ({ navigation }) => {
           </View>
 
           <TouchableOpacity
-            onPress={handleStartChat} // Call the new handler
+            accessible={true}
+            accessibilityHint="Moves you to the chat interface."
+            accessibilityRole="button"
+            onPress={handleStartChat}
             style={styles.chatButton}
           >
             <Text style={[styles.text, { color: '#fff', fontFamily: 'Poppins-Bold' }]}>Start Chatting</Text>
