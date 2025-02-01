@@ -202,7 +202,7 @@ const Chat = ({ route, navigation }) => {
       },
       {
         _id: 2,
-        text: 'This is a system message',
+        text: ` ${name} joined the chat`,
         createdAt: new Date(),
         system: true,
       },
@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
   },
   // System message styles
   systemMessageContainer: {
+    backgroundColor: 'blue',
     padding: 10,
     borderRadius: 10,
     marginVertical: 5,
