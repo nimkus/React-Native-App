@@ -17,7 +17,7 @@ const Start = ({ navigation }) => {
   const [name, setName] = useState('');
   // Chat Colors: State for changing bg-color and speech bubble color
   const [chatBgColor, setChatBgColor] = useState('#8A95A5');
-  const [colorRightBubble, setColorRightBubble] = useState('#2C455F');
+  const [colorRightBubble, setColorRightBubble] = useState('');
   // State to handle showing the warning message
   const [showWarning, setShowWarning] = useState(false);
 
@@ -26,10 +26,6 @@ const Start = ({ navigation }) => {
     'Poppins-Regular': require('../assets/fonts/Poppins/Poppins-Regular.ttf'),
     'Poppins-Bold': require('../assets/fonts/Poppins/Poppins-Bold.ttf'),
   });
-
-  if (!fontsLoaded) {
-    return null; // Render nothing until fonts are loaded
-  }
 
   // color theme for the chat
   const backgroundColors = [
@@ -45,15 +41,6 @@ const Start = ({ navigation }) => {
     '#AE8FCD', // Soft Lavender
     '#E1A21D', // Gold Yellow
   ];
-
-  // color theme: set the color of the speech bubbles according to chatBgColor
-  useEffect(() => {
-    // Find the index of the selected background color
-    const index = backgroundColors.indexOf(chatBgColor);
-
-    // Set the corresponding speech bubble color or default to orange
-    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : '#F6E71D');
-  }, [chatBgColor]);
 
   // Function to handle circle selection
   const handleCirclePress = (color) => {
@@ -77,6 +64,19 @@ const Start = ({ navigation }) => {
       setShowWarning(false); // Hide the warning when something is typed
     }
   };
+
+  // color theme: set the color of the speech bubbles according to chatBgColor
+  useEffect(() => {
+    // Find the index of the selected background color
+    const index = backgroundColors.indexOf(chatBgColor);
+
+    // Set the corresponding speech bubble color or default to orange
+    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : '#2C455F');
+  }, [chatBgColor]);
+
+  if (!fontsLoaded) {
+    return null; // Render nothing until fonts are loaded
+  }
 
   return (
     <View style={styles.container}>

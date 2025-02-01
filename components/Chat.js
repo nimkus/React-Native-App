@@ -28,14 +28,7 @@ const Chat = ({ route, navigation }) => {
     '#E1A21D', // Gold Yellow
   ];
 
-  // color theme: set the color of the speech bubbles according to chatBgColor
-  useEffect(() => {
-    // Find the index of the selected background color
-    const index = backgroundColors.indexOf(chatBgColor);
-
-    // Set the corresponding speech bubble color or default to orange
-    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
-  }, []);
+  const colorLeftBubble = '#EAEAEA'; // Off-white
 
   // state for messages of the chat
   const [messages, setMessages] = useState([]);
@@ -43,31 +36,6 @@ const Chat = ({ route, navigation }) => {
   const [text, setText] = useState('');
   // state for recording audio messages
   const [recording, setRecording] = useState(null);
-
-  useEffect(() => {
-    navigation.setOptions({ title: name });
-  }, []);
-
-  useEffect(() => {
-    setMessages([
-      {
-        _id: 1,
-        text: 'Hello developer',
-        createdAt: new Date(),
-        user: {
-          _id: 2,
-          name: 'React Native',
-          avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
-        },
-      },
-      {
-        _id: 2,
-        text: 'This is a system message',
-        createdAt: new Date(),
-        system: true,
-      },
-    ]);
-  }, []);
 
   const onSend = (newMessages = []) => {
     setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
@@ -117,6 +85,7 @@ const Chat = ({ route, navigation }) => {
     await sound.playAsync();
   };
 
+  // Render audio messages
   const renderMessageAudio = (props) => {
     const { currentMessage } = props;
 
@@ -130,31 +99,30 @@ const Chat = ({ route, navigation }) => {
     return null;
   };
 
+  // Render system messages
+  const renderMessageSystem = (props) => {
+    const { currentMessage } = props;
+
+    if (currentMessage.system) {
+      return (
+        <View style={styles.systemMessageContainer}>
+          <Text style={styles.systemMessageText}>{currentMessage.text}</Text>
+          <Text style={styles.systemMessageDate}>{currentMessage.createdAt.toLocaleString()}</Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
   const renderBubble = (props) => {
     const { currentMessage } = props;
 
-    if (currentMessage.audio) {
-      return (
-        <Bubble
-          {...props}
-          wrapperStyle={{
-            right: { backgroundColor: colorRightBubble },
-            left: { backgroundColor: '#EAEAEA' },
-          }}
-          renderMessage={() => (
-            <TouchableOpacity style={styles.audioBubble} onPress={() => playAudio(currentMessage.audio)}>
-              <Text style={styles.audioText}>▶ Play Audio</Text>
-            </TouchableOpacity>
-          )}
-        />
-      );
-    }
     return (
       <Bubble
         {...props}
         wrapperStyle={{
           right: { backgroundColor: colorRightBubble },
-          left: { backgroundColor: '#EAEAEA' },
+          left: { backgroundColor: colorLeftBubble },
         }}
         hh
       />
@@ -197,6 +165,40 @@ const Chat = ({ route, navigation }) => {
     );
   };
 
+  useEffect(() => {
+    navigation.setOptions({ title: name });
+  }, []);
+
+  useEffect(() => {
+    setMessages([
+      {
+        _id: 1,
+        text: 'Hello developer',
+        createdAt: new Date(),
+        user: {
+          _id: 2,
+          name: 'React Native',
+          avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+        },
+      },
+      {
+        _id: 2,
+        text: 'This is a system message',
+        createdAt: new Date(),
+        system: true,
+      },
+    ]);
+  }, []);
+
+  // color theme: set the color of the speech bubbles according to chatBgColor
+  useEffect(() => {
+    // Find the index of the selected background color
+    const index = backgroundColors.indexOf(chatBgColor);
+
+    // Set the corresponding speech bubble color or default to orange
+    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
+  }, []);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: chatBgColor }]}>
       <GiftedChat
@@ -206,6 +208,7 @@ const Chat = ({ route, navigation }) => {
         renderBubble={renderBubble}
         renderMessageAudio={renderMessageAudio} // Handles audio messages
         renderInputToolbar={renderInputToolbar} // Custom input with audio button
+        renderMessageSystem={renderMessageSystem} // Custom system messages
         alwaysShowSend
       />
       {Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null}
@@ -255,6 +258,19 @@ const styles = StyleSheet.create({
   },
   inputToolbar: {
     backgroundColor: 'transparent',
+  },
+  // System message styles
+  systemMessageContainer: {
+    padding: 10,
+    borderRadius: 10,
+    marginVertical: 5,
+    alignItems: 'center',
+  },
+  systemMessageText: {
+    color: 'blue',
+  },
+  systemMessageDate: {
+    color: 'blue',
   },
 });
 
