@@ -4,6 +4,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Alert,
   ImageBackground,
   TouchableOpacity,
   Platform,
@@ -11,8 +12,13 @@ import {
   TextInput,
 } from 'react-native';
 
+// Authentication
+import { getAuth, signInAnonymously } from 'firebase/auth';
+
 // The start screen allows users to enter their name and choose the bg-color of the chat screen
 const Start = ({ navigation }) => {
+  const auth = getAuth();
+
   // State for setting the username to be displayed in the chat
   const [name, setName] = useState('');
   // Chat Colors: State for changing bg-color and speech bubble color
@@ -47,13 +53,24 @@ const Start = ({ navigation }) => {
     setChatBgColor(color);
   };
 
+  // Anomously sign in user
+  const signInUser = () => {
+    signInAnonymously(auth)
+      .then((result) => {
+        navigation.navigate('Chat', { userId: result.user.uid, name: name, chatBgColor: chatBgColor });
+      })
+      .catch((error) => {
+        Alert.alert('Unable to sign in, try later again.');
+      });
+  };
+
   // Handle the Start Chatting button press
   const handleStartChat = () => {
     if (name.trim() === '') {
       setShowWarning(true); // Show warning if name is empty
     } else {
       setShowWarning(false); // Hide warning
-      navigation.navigate('Chat', { name: name, chatBgColor: chatBgColor });
+      signInUser();
     }
   };
 

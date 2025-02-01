@@ -5,10 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 // Expo AV for handling audio
 import { Audio } from 'expo-av';
+// Firestore
+import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 
-const Chat = ({ route, navigation, db }) => {
+const Chat = ({ route, navigation }) => {
   // Getting username and bg-color entered in the start screen
-  const { name, chatBgColor } = route.params;
+  const { name, chatBgColor, userId, db } = route.params;
 
   // state for messages of the chat
   const [messages, setMessages] = useState([]);
@@ -37,10 +39,6 @@ const Chat = ({ route, navigation, db }) => {
   ];
 
   const colorLeftBubble = '#EAEAEA'; // Off-white
-
-  const onSend = (newMessages = []) => {
-    setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
-  };
 
   const startRecording = async () => {
     try {
@@ -74,7 +72,11 @@ const Chat = ({ route, navigation, db }) => {
     const audioMessage = {
       _id: Math.random().toString(36).substring(7),
       createdAt: new Date(),
-      user: { _id: 1 },
+      user: {
+        _id: userId,
+        name: name,
+        avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+      },
       audio: uri,
     };
 
@@ -174,7 +176,11 @@ const Chat = ({ route, navigation, db }) => {
                 _id: Math.random().toString(36).substring(7),
                 text,
                 createdAt: new Date(),
-                user: { _id: 1 },
+                user: {
+                  _id: userId,
+                  name: name,
+                  avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+                },
               };
               onSend([newMessage]);
               setText(''); // Reset text input after sending
@@ -185,29 +191,42 @@ const Chat = ({ route, navigation, db }) => {
     );
   };
 
-  useEffect(() => {
-    navigation.setOptions({ title: name });
-  }, []);
+  const onSend = (newMessages) => {
+    addDoc(collection(db, 'messages'), newMessages[0]);
+  };
 
   useEffect(() => {
-    setMessages([
-      {
-        _id: 1,
-        text: 'Hello developer',
-        createdAt: new Date(),
-        user: {
-          _id: 2,
-          name: 'React Native',
-          avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
-        },
-      },
-      {
-        _id: 2,
-        text: ` ${name} joined the chat`,
-        createdAt: new Date(),
-        system: true,
-      },
-    ]);
+    navigation.setOptions({ title: name });
+    const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+    const unsubMessages = onSnapshot(q, (docs) => {
+      let newMessages = [];
+      docs.forEach((doc) => {
+        newMessages.push({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: new Date(doc.data().createdAt.toMillis()),
+        });
+      });
+      setMessages(newMessages);
+    });
+
+    // ----> Send system message when the user enters <----
+    (async () => {
+      try {
+        await addDoc(collection(db, 'messages'), {
+          _id: `system-${Date.now()}`, // Unique ID
+          text: `Welcome to the chat, ${name}!`,
+          createdAt: new Date(),
+          system: true,
+        });
+      } catch (error) {
+        console.log('Error sending system message: ', error);
+      }
+    })();
+
+    return () => {
+      if (unsubMessages) unsubMessages();
+    };
   }, []);
 
   // color theme: set the color of the speech bubbles according to chatBgColor
@@ -228,7 +247,11 @@ const Chat = ({ route, navigation, db }) => {
       <GiftedChat
         messages={messages}
         onSend={(messages) => onSend(messages)}
-        user={{ _id: 1 }}
+        user={{
+          _id: userId,
+          name: name,
+          avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+        }}
         renderBubble={renderBubble}
         renderMessageAudio={renderMessageAudio} // Handles audio messages
         renderInputToolbar={renderInputToolbar} // Custom input with audio button
@@ -237,6 +260,7 @@ const Chat = ({ route, navigation, db }) => {
         accessibilityLabel="Chat interface"
         accessibilityHint="Displays and sends chat messages. You can type or send audio messages."
       />
+
       {Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null}
     </SafeAreaView>
   );
