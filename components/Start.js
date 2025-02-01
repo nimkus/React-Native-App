@@ -52,7 +52,7 @@ const Start = ({ navigation }) => {
     const index = backgroundColors.indexOf(chatBgColor);
 
     // Set the corresponding speech bubble color or default to orange
-    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
+    setColorRightBubble(index !== -1 ? speechBubbleColors[index] : '#F6E71D');
   }, [chatBgColor]);
 
   // Function to handle circle selection
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   nameInput: {
-    height: '55',
+    height: 55,
     paddingLeft: 10,
     borderWidth: 1,
   },
