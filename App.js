@@ -1,73 +1,104 @@
-import { StyleSheet } from 'react-native';
-import { useState } from 'react';
-
-// React Navigation
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+import { db, auth } from './firebaseConfig';
+import { signOut, onAuthStateChanged } from 'firebase/auth'; // Import onAuthStateChanged
+import { disableNetwork, enableNetwork } from 'firebase/firestore';
+
+import { useNetInfo } from '@react-native-community/netinfo';
 
 // Create the navigator
 const Stack = createNativeStackNavigator();
 
-// Firestore
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-
-// import the screens
+// Screens
 import Start from './components/Start';
 import Chat from './components/Chat';
 
 const App = () => {
-  const [text, setText] = useState('');
+  // Track the network connectivity
+  const connectionStatus = useNetInfo();
 
-  // Firebase configuration
-  const firebaseConfig = {
-    apiKey: 'AIzaSyBwyHTp2Cmk7hgSjA5cUJq12LIvnO54ddI',
-    authDomain: 'chatter-d15b3.firebaseapp.com',
-    projectId: 'chatter-d15b3',
-    storageBucket: 'chatter-d15b3.firebasestorage.app',
-    messagingSenderId: '469493975732',
-    appId: '1:469493975732:web:875912b3183464626465e1',
+  // Keep track of whether a user is signed in or not
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
+  // Create a ref to the navigation container so we can call .reset()
+  const navigationRef = useRef();
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      // If user exists, they are signed in. Otherwise, not signed in.
+      setIsSignedIn(!!user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // function: sign-out user
+  const signOutUser = async () => {
+    try {
+      await signOut(auth);
+
+      // After sign-out, reset navigation to the Start screen
+      if (navigationRef.current) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'Start',
+              params: { reset: true },
+            },
+          ],
+        });
+      }
+
+      Alert.alert('Signed out', 'You have signed out successfully.');
+    } catch (error) {
+      Alert.alert('Error', 'Error signing out: ' + error.message);
+    }
   };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-
-  // Initialize Cloud Firestore and get a reference to the service
-  const db = getFirestore(app);
+  // If network connection lost: Display alert + stop attempting to connect to Firestore
+  useEffect(() => {
+    if (connectionStatus.isConnected === false) {
+      Alert.alert('Connection Lost!');
+      disableNetwork(db);
+    } else if (connectionStatus.isConnected === true) {
+      enableNetwork(db);
+    }
+  }, [connectionStatus.isConnected]);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName="Start">
-        <Stack.Screen name="Start" component={Start} />
-        <Stack.Screen name="Chat" component={Chat} initialParams={{ db }} />
+        <Stack.Screen
+          name="Start"
+          component={Start}
+          options={{
+            title: 'Chatter',
+            // Conditionally render the Sign Out button only if user is signed in
+            headerRight: () =>
+              isSignedIn ? (
+                <TouchableOpacity onPress={signOutUser} style={{ marginRight: 15 }}>
+                  <Text style={styles.signoutButton}>Sign Out</Text>
+                </TouchableOpacity>
+              ) : null,
+          }}
+        />
+        <Stack.Screen name="Chat">
+          {(props) => <Chat {...props} isConnected={connectionStatus.isConnected} />}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  textInput: {
-    color: 'white',
-    width: '88%',
-    borderWidth: 1,
-    height: 50,
-    padding: 10,
-  },
-  box1: {
-    flex: 1,
-    backgroundColor: 'blue',
-  },
-  box2: {
-    flex: 12,
-    backgroundColor: 'red',
-  },
-  box3: {
-    flex: 5,
-    backgroundColor: 'green',
+  signoutButton: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
 });
 

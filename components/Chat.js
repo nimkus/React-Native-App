@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform, KeyboardAvoidingView, TextInput } from 'react-native';
+import {
+  StyleSheet,
+  Alert,
+  View,
+  Text,
+  TouchableOpacity,
+  Platform,
+  KeyboardAvoidingView,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Import Gifted Chat library
 import { GiftedChat, Bubble } from 'react-native-gifted-chat';
@@ -7,10 +16,13 @@ import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 import { Audio } from 'expo-av';
 // Firestore
 import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+// AsyncStorage: users sees messages even when offline
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Chat = ({ route, navigation }) => {
+const Chat = ({ route, navigation, isConnected }) => {
   // Getting username and bg-color entered in the start screen
-  const { name, chatBgColor, userId, db } = route.params;
+  const { name, chatBgColor, userId } = route.params;
 
   // state for messages of the chat
   const [messages, setMessages] = useState([]);
@@ -144,73 +156,96 @@ const Chat = ({ route, navigation }) => {
 
   // Custom Input Toolbar with button to record audio message
   const renderInputToolbar = (props) => {
-    return (
-      <View style={styles.inputContainer}>
-        <TouchableOpacity
-          accessible={true}
-          accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
-          accessibilityHint={
-            recording ? 'Tap to stop recording your audio message' : 'Tap to start recording an audio message'
-          }
-          accessibilityRole="button"
-          onPress={recording ? stopRecording : startRecording}
-          style={[styles.audioButton, { backgroundColor: colorRightBubble }]}
-        >
-          <Text style={styles.audioButtonText}>{recording ? '■ Stop' : '🎤'}</Text>
-        </TouchableOpacity>
-
-        {/* Custom TextInput for typing messages */}
-        <TextInput
-          accessible={true}
-          accessibilityLabel="Type a message"
-          accessibilityHint="You can type your message here."
-          style={styles.textInput}
-          value={text} // Bind text state to the TextInput value
-          onChangeText={setText} // Update text state on change
-          placeholder="Type a message..."
-          placeholderTextColor="#888"
-          returnKeyType="send"
-          onSubmitEditing={() => {
-            if (text.trim()) {
-              const newMessage = {
-                _id: Math.random().toString(36).substring(7),
-                text,
-                createdAt: new Date(),
-                user: {
-                  _id: userId,
-                  name: name,
-                  avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
-                },
-              };
-              onSend([newMessage]);
-              setText(''); // Reset text input after sending
+    if (isConnected === true) {
+      return (
+        <View style={styles.inputContainer}>
+          <TouchableOpacity
+            accessible={true}
+            accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
+            accessibilityHint={
+              recording ? 'Tap to stop recording your audio message' : 'Tap to start recording an audio message'
             }
-          }}
-        />
-      </View>
-    );
+            accessibilityRole="button"
+            onPress={recording ? stopRecording : startRecording}
+            style={[styles.audioButton, { backgroundColor: colorRightBubble }]}
+          >
+            <Text style={styles.audioButtonText}>{recording ? '■ Stop' : '🎤'}</Text>
+          </TouchableOpacity>
+
+          {/* Custom TextInput for typing messages */}
+          <TextInput
+            accessible={true}
+            accessibilityLabel="Type a message"
+            accessibilityHint="You can type your message here."
+            style={styles.textInput}
+            value={text} // Bind text state to the TextInput value
+            onChangeText={setText} // Update text state on change
+            placeholder="Type a message..."
+            placeholderTextColor="#888"
+            returnKeyType="send"
+            onSubmitEditing={() => {
+              if (text.trim()) {
+                const newMessage = {
+                  _id: Math.random().toString(36).substring(7),
+                  text,
+                  createdAt: new Date(),
+                  user: {
+                    _id: userId,
+                    name: name,
+                    avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+                  },
+                };
+                onSend([newMessage]);
+                setText(''); // Reset text input after sending
+              }
+            }}
+          />
+        </View>
+      );
+    }
   };
 
   const onSend = (newMessages) => {
     addDoc(collection(db, 'messages'), newMessages[0]);
   };
 
+  // Setting the Messages shown in the chat
+  let unsubMessages;
+
+  //Alert.alert('Network Connection', `isConnected is: ${String(isConnected)}`);
+
   useEffect(() => {
     navigation.setOptions({ title: name });
-    const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
-    const unsubMessages = onSnapshot(q, (docs) => {
-      let newMessages = [];
-      docs.forEach((doc) => {
-        newMessages.push({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: new Date(doc.data().createdAt.toMillis()),
-        });
-      });
-      setMessages(newMessages);
-    });
 
-    // ----> Send system message when the user enters <----
+    if (isConnected === true) {
+      // unregister current onSnapshot() listener to avoid registering multiple listeners when useEffect code is re-executed.
+      if (unsubMessages) unsubMessages();
+      unsubMessages = null;
+
+      const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+      unsubMessages = onSnapshot(
+        q,
+        (documentsSnapshot) => {
+          let newMessages = [];
+          documentsSnapshot.forEach((doc) => {
+            newMessages.push({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: new Date(doc.data().createdAt.toMillis()),
+            });
+          });
+          cacheMesssages(newMessages);
+          setMessages(newMessages);
+        },
+        (error) => {
+          console.error('Error with onSnapshot:', error);
+        }
+      );
+    } else {
+      loadCachedMessages();
+    }
+
+    // ----> Send system message when new user enters  <----
     (async () => {
       try {
         await addDoc(collection(db, 'messages'), {
@@ -224,10 +259,11 @@ const Chat = ({ route, navigation }) => {
       }
     })();
 
+    // Clean up code
     return () => {
       if (unsubMessages) unsubMessages();
     };
-  }, []);
+  }, [isConnected]);
 
   // color theme: set the color of the speech bubbles according to chatBgColor
   useEffect(() => {
@@ -237,6 +273,21 @@ const Chat = ({ route, navigation }) => {
     // Set the corresponding speech bubble color or default to orange
     setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
   }, []);
+
+  // Function to cache messages for offline use
+  const cacheMesssages = async (messagesToCache) => {
+    try {
+      await AsyncStorage.setItem('message_store', JSON.stringify(messagesToCache));
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  // Function to load cached messages when offline
+  const loadCachedMessages = async () => {
+    const cachedLists = (await AsyncStorage.getItem('message_store')) || [];
+    setMessages(JSON.parse(cachedLists));
+  };
 
   return (
     <SafeAreaView

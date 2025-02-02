@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import {
   StyleSheet,
@@ -13,14 +13,15 @@ import {
 } from 'react-native';
 
 // Authentication
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import { signInAnonymously } from 'firebase/auth';
 
 // The start screen allows users to enter their name and choose the bg-color of the chat screen
-const Start = ({ navigation }) => {
-  const auth = getAuth();
-
+const Start = ({ route, navigation }) => {
   // State for setting the username to be displayed in the chat
   const [name, setName] = useState('');
+  const [isNameLocked, setIsNameLocked] = useState(false);
+
   // Chat Colors: State for changing bg-color and speech bubble color
   const [chatBgColor, setChatBgColor] = useState('#8A95A5');
   const [colorRightBubble, setColorRightBubble] = useState('');
@@ -53,13 +54,17 @@ const Start = ({ navigation }) => {
     setChatBgColor(color);
   };
 
-  // Anomously sign in user
+  // Anonymously sign in user
   const signInUser = () => {
     signInAnonymously(auth)
       .then((result) => {
-        navigation.navigate('Chat', { userId: result.user.uid, name: name, chatBgColor: chatBgColor });
+        navigation.navigate('Chat', {
+          userId: result.user.uid,
+          name: name,
+          chatBgColor: chatBgColor,
+        });
       })
-      .catch((error) => {
+      .catch(() => {
         Alert.alert('Unable to sign in, try later again.');
       });
   };
@@ -74,11 +79,18 @@ const Start = ({ navigation }) => {
     }
   };
 
-  // Update the name and hide the warning if text is entered
+  // Update the name
   const handleNameChange = (text) => {
     setName(text);
     if (text.trim() !== '') {
-      setShowWarning(false); // Hide the warning when something is typed
+      setShowWarning(false);
+    }
+  };
+
+  // If user leaves the TextInput (onBlur) and there's a name, lock it
+  const handleBlur = () => {
+    if (name.trim() !== '') {
+      setIsNameLocked(true);
     }
   };
 
@@ -86,14 +98,20 @@ const Start = ({ navigation }) => {
   useEffect(() => {
     // Find the index of the selected background color
     const index = backgroundColors.indexOf(chatBgColor);
-
-    // Set the corresponding speech bubble color or default to orange
     setColorRightBubble(index !== -1 ? speechBubbleColors[index] : '#2C455F');
   }, [chatBgColor]);
 
   if (!fontsLoaded) {
     return null; // Render nothing until fonts are loaded
   }
+
+  // On user signout, clear user name
+  useEffect(() => {
+    if (route.params?.reset) {
+      setName('');
+      setIsNameLocked(false);
+    }
+  }, [route.params?.reset]);
 
   return (
     <View style={styles.container}>
@@ -102,43 +120,61 @@ const Start = ({ navigation }) => {
         resizeMode="cover"
         style={styles.backgroundImage}
       >
-        <Text style={styles.appTitle}>Chatter</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.appTitle}>Chatter</Text>
+          <Text style={styles.appSubtitle}>Your favorite chat app</Text>
+        </View>
 
         <View style={styles.InputField}>
-          <TextInput
-            accessible={true}
-            accessibilityLabel="Enter your name"
-            accessibilityHint="Please enter your name to start chatting."
-            style={[styles.nameInput, styles.text]}
-            value={name}
-            onChangeText={handleNameChange} // Use the new handler
-            placeholder="Your name"
-          />
+          {/* NAME SECTION */}
+          {isNameLocked ? (
+            /* If name is locked, show a "permanent" style with Edit button */
+            <View style={[styles.lockedNameContainer, styles.text]}>
+              <Text style={styles.lockedNameText}>{name}</Text>
+              <TouchableOpacity style={styles.editButton} onPress={() => setIsNameLocked(false)}>
+                <Text style={[styles.text, styles.editButtonText]}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Otherwise, show the TextInput */
+            <TextInput
+              accessible
+              accessibilityLabel="Enter your name"
+              accessibilityHint="Please enter your name to start chatting."
+              style={[styles.nameInput, styles.text]}
+              value={name}
+              onChangeText={handleNameChange}
+              placeholder="Your name"
+              onBlur={handleBlur}
+            />
+          )}
 
           {/* Show warning if name is empty */}
           {showWarning && (
-            <View
-              style={styles.warningContainer}
-              accessibilityLiveRegion="assertive" // Makes sure screen readers announce this
-            >
+            <View style={styles.warningContainer} accessibilityLiveRegion="assertive">
               <Text style={styles.warningText}>Please enter your name to start chatting.</Text>
             </View>
           )}
 
+          {/* COLOR SELECTION */}
           <View>
-            <Text style={[styles.text, { marginBottom: 10 }]}>Choose Chat Colors:</Text>
+            <Text style={[styles.text, { marginBottom: 10 }]}>Choose your chat colors:</Text>
             <View style={styles.colorContainer}>
               {backgroundColors.map((color) => (
                 <TouchableOpacity
-                  accessible={true}
-                  accessibilityLabel="`Select color ${colorRightBubble} on ${color}`"
-                  accessibilityHint="Let’s you choose the color of the chat background and speechbubbles."
+                  accessible
+                  accessibilityLabel={`Select color ${colorRightBubble} on ${color}`}
+                  accessibilityHint="Lets you choose the color of the chat background and speech bubbles."
                   accessibilityRole="button"
                   key={color}
                   style={[
                     styles.colorCircles,
                     { backgroundColor: color },
-                    chatBgColor === color && { borderWidth: 16, backgroundColor: colorRightBubble, borderColor: color }, // Apply selected style
+                    chatBgColor === color && {
+                      borderWidth: 16,
+                      backgroundColor: colorRightBubble,
+                      borderColor: color,
+                    },
                   ]}
                   onPress={() => handleCirclePress(color)}
                 />
@@ -146,8 +182,9 @@ const Start = ({ navigation }) => {
             </View>
           </View>
 
+          {/* START CHATTING BUTTON */}
           <TouchableOpacity
-            accessible={true}
+            accessible
             accessibilityHint="Moves you to the chat interface."
             accessibilityRole="button"
             onPress={handleStartChat}
@@ -162,6 +199,7 @@ const Start = ({ navigation }) => {
   );
 };
 
+/* STYLES */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -171,19 +209,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  titleContainer: {
+    marginTop: '30%',
+  },
   appTitle: {
+    fontSize: 55,
+    lineHeight: 70,
     fontFamily: 'Poppins-Bold',
-    color: 'white',
-    fontSize: 45,
-    lineHeight: 84,
     textAlign: 'center',
-    marginTop: '20%',
+    color: 'white',
+  },
+  appSubtitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins-Regular',
+    textAlign: 'center',
+    color: 'white',
   },
   text: {
     fontFamily: 'Poppins-Regular',
     fontSize: 16,
     color: '#757083',
   },
+  /* INPUT FIELD CONTAINER */
   InputField: {
     width: '88%',
     height: '44%',
@@ -192,18 +239,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'space-between',
   },
+
+  /* EDITABLE TEXTINPUT */
   nameInput: {
     height: 55,
-    paddingLeft: 10,
+    paddingHorizontal: 10,
     borderWidth: 1,
+    borderColor: '#ccc',
   },
-  chatButton: {
-    height: '20%',
-    padding: 10,
+
+  /* LOCKED NAME DISPLAY */
+  lockedNameContainer: {
+    height: 55,
+
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#757083',
+    justifyContent: 'left',
   },
+  lockedNameText: {
+    fontFamily: 'Poppins-Bold',
+    maxWidth: '88%',
+    fontSize: 30,
+    color: '#181818',
+  },
+  editButton: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  editButtonText: {
+    color: '#007AFF',
+    fontFamily: 'Poppins-Bold',
+  },
+
+  /* COLOR CIRCLES */
   colorContainer: {
     flexDirection: 'row',
   },
@@ -214,17 +282,27 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
+  /* WARNING */
   warningContainer: {
-    backgroundColor: '#ffcccb', // Light red background for warning
+    backgroundColor: '#fff5cb',
     padding: 10,
     borderRadius: 8,
-    marginBottom: 10,
+    marginTop: 10,
   },
   warningText: {
-    color: '#a94442', // Dark red color for warning text
+    color: '#a98542', // Dark yellow color for warning text
     fontFamily: 'Poppins-Regular',
     fontSize: 16,
     textAlign: 'center',
+  },
+
+  /* START CHATTING BUTTON */
+  chatButton: {
+    height: '20%',
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#757083',
   },
 });
 
