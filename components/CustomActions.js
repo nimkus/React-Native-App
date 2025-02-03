@@ -1,83 +1,125 @@
-import { useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, Text, Alert } from 'react-native';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 
-// Making images on phone avaible for the app
+// Making images on phone available for the app
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 
-// Make geolocation of phone availabe for the app
+// Make geolocation of phone available for the app
 import * as Location from 'expo-location';
-import MapView from 'react-native-maps';
 
-const CustomActions = ({ wrapperStyle, iconTextStyle, startRecording, stopRecording, recording, onSend }) => {
+const CustomActions = ({
+  wrapperStyle,
+  iconTextStyle,
+  startRecording,
+  stopRecording,
+  recording,
+  onSend,
+  // these come from Chat.js
+  name,
+  userId,
+}) => {
   const actionSheet = useActionSheet();
 
-  // state to represent URI source of image from phone gallery or camera
-  const [image, setImage] = useState(null);
-  // state to represent phone's location data
-  const [location, setLocation] = useState(null);
-
+  // Pick an image from the photo library:
   const pickImage = async () => {
-    let permissions = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (permissions?.granted) {
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      });
-
-      if (!result.canceled) setImage(result.assets[0]);
-      else setImage(null);
+    const permissions = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissions.granted) {
+      Alert.alert('Permission to access the library is required!');
+      return;
     }
-  };
 
-  const takePhoto = async () => {
-    let permissions = await ImagePicker.requestCameraPermissionsAsync();
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
 
-    if (permissions?.granted) {
-      let result = await ImagePicker.launchCameraAsync();
-
-      if (!result.canceled) {
-        let mediaLibraryPermissions = await MediaLibrary.requestPermissionsAsync();
-
-        if (mediaLibraryPermissions?.granted) {
-          await MediaLibrary.saveToLibraryAsync(result.assets[0].uri);
-        }
-
-        setImage(result.assets[0]);
-      } else setImage(null);
-    }
-  };
-
-  const getLocation = async () => {
-    let permissions = await Location.requestForegroundPermissionsAsync();
-    if (permissions?.granted) {
-      const location = await Location.getCurrentPositionAsync({});
-      if (location) {
-        onSend([
-          {
-            _id: Math.random().toString(36).substring(7),
-            text: '', // Often helpful to add at least an empty string
-            createdAt: new Date(),
-            user: {
-              _id: 'your-user-id',
-              name: 'Your username',
-              // optionally an avatar
-            },
-            location: {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            },
+    if (!result.canceled) {
+      const { uri } = result.assets[0];
+      onSend([
+        {
+          _id: `image-${Date.now()}`,
+          text: '',
+          createdAt: new Date(),
+          user: {
+            _id: userId,
+            name: name,
+            avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
           },
-        ]);
-      } else {
-        Alert.alert('Error occurred while fetching location');
-      }
-    } else {
-      Alert.alert("Permissions haven't been granted.");
+          image: uri, // This is the key that Gifted Chat looks for
+        },
+      ]);
     }
   };
 
+  // Take a photo with the camera:
+  const takePhoto = async () => {
+    const permissions = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissions.granted) {
+      Alert.alert('Permission to access the camera is required!');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    });
+
+    if (!result.canceled) {
+      // Optionally save to the user’s media library:
+      const { uri } = result.assets[0];
+      const mediaLibraryPermissions = await MediaLibrary.requestPermissionsAsync();
+      if (mediaLibraryPermissions.granted) {
+        await MediaLibrary.saveToLibraryAsync(uri);
+      }
+
+      // Send as a Gifted Chat message:
+      onSend([
+        {
+          _id: `photo-${Date.now()}`,
+          text: '',
+          createdAt: new Date(),
+          user: {
+            _id: userId,
+            name: name,
+            avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+          },
+          image: uri, // Gifted Chat uses this to display the image
+        },
+      ]);
+    }
+  };
+
+  // Get user’s current location:
+  const getLocation = async () => {
+    const permissions = await Location.requestForegroundPermissionsAsync();
+    if (!permissions.granted) {
+      Alert.alert("Permissions haven't been granted.");
+      return;
+    }
+
+    const loc = await Location.getCurrentPositionAsync({});
+    if (loc) {
+      onSend([
+        {
+          _id: `location-${Date.now()}`,
+          text: '',
+          createdAt: new Date(),
+          user: {
+            _id: userId,
+            name: name,
+            avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+          },
+          location: {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          },
+        },
+      ]);
+    } else {
+      Alert.alert('Error occurred while fetching location');
+    }
+  };
+
+  // Show action sheet with the 4 main actions:
   const onActionPress = () => {
     const options = [
       'Choose From Library',
@@ -87,6 +129,7 @@ const CustomActions = ({ wrapperStyle, iconTextStyle, startRecording, stopRecord
       'Cancel',
     ];
     const cancelButtonIndex = options.length - 1;
+
     actionSheet.showActionSheetWithOptions(
       {
         options,
@@ -105,8 +148,11 @@ const CustomActions = ({ wrapperStyle, iconTextStyle, startRecording, stopRecord
             return;
           case 3:
             // Toggle Recording
-            if (recording) stopRecording();
-            else startRecording();
+            if (recording) {
+              stopRecording();
+            } else {
+              startRecording();
+            }
             return;
           default:
         }
@@ -122,6 +168,8 @@ const CustomActions = ({ wrapperStyle, iconTextStyle, startRecording, stopRecord
     </TouchableOpacity>
   );
 };
+
+export default CustomActions;
 
 const styles = StyleSheet.create({
   container: {
@@ -145,5 +193,3 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
 });
-
-export default CustomActions;

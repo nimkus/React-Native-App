@@ -97,11 +97,13 @@ const Chat = ({ route, navigation, isConnected }) => {
     }
   };
 
-  const onSend = (newMessages) => {
+  // Gifted Chat's onSend
+  const onSend = (newMessages = []) => {
+    // Insert only the first message object into Firestore
     addDoc(collection(db, 'messages'), newMessages[0]);
   };
 
-  // Setting the Messages shown in the chat
+  // Listen to messages from Firestore
   let unsubMessages;
 
   useEffect(() => {
@@ -119,7 +121,7 @@ const Chat = ({ route, navigation, isConnected }) => {
           let newMessages = [];
           documentsSnapshot.forEach((doc) => {
             newMessages.push({
-              id: doc.id,
+              _id: doc.id,
               ...doc.data(),
               createdAt: new Date(doc.data().createdAt.toMillis()),
             });
@@ -202,7 +204,17 @@ const Chat = ({ route, navigation, isConnected }) => {
   };
 
   const renderCustomActions = (props) => {
-    return <CustomActions onSend={onSend} {...props} />;
+    return (
+      <CustomActions
+        onSend={onSend}
+        {...props}
+        userId={userId}
+        name={name}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
+        recording={recording}
+      />
+    );
   };
 
   const renderCustomView = (props) => {
