@@ -101,10 +101,6 @@ const Start = ({ route, navigation }) => {
     setColorRightBubble(index !== -1 ? speechBubbleColors[index] : '#2C455F');
   }, [chatBgColor]);
 
-  if (!fontsLoaded) {
-    return null; // Render nothing until fonts are loaded
-  }
-
   // On user signout, clear user name
   useEffect(() => {
     if (route.params?.reset) {
@@ -112,6 +108,11 @@ const Start = ({ route, navigation }) => {
       setIsNameLocked(false);
     }
   }, [route.params?.reset]);
+
+  // Render nothing until fonts are loaded
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

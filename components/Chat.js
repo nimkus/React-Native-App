@@ -1,17 +1,8 @@
 import { useEffect, useState } from 'react';
-import {
-  StyleSheet,
-  Alert,
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
-  KeyboardAvoidingView,
-  TextInput,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Import Gifted Chat library
-import { GiftedChat, Bubble } from 'react-native-gifted-chat';
+import { GiftedChat, Bubble, InputToolbar } from 'react-native-gifted-chat';
 // Expo AV for handling audio
 import { Audio } from 'expo-av';
 // Firestore
@@ -20,14 +11,15 @@ import { db } from '../firebaseConfig';
 // AsyncStorage: users sees messages even when offline
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import CustomActions from './CustomActions';
+import MapView from 'react-native-maps';
+
 const Chat = ({ route, navigation, isConnected }) => {
   // Getting username and bg-color entered in the start screen
-  const { name, chatBgColor, userId } = route.params;
+  const { name, userId, chatBgColor } = route.params;
 
   // state for messages of the chat
   const [messages, setMessages] = useState([]);
-  // state for the message input
-  const [text, setText] = useState('');
   // state for recording audio messages
   const [recording, setRecording] = useState(null);
 
@@ -52,6 +44,7 @@ const Chat = ({ route, navigation, isConnected }) => {
 
   const colorLeftBubble = '#EAEAEA'; // Off-white
 
+  // ----> AUDIO RECORDING FUNCTIONS <----
   const startRecording = async () => {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
@@ -82,7 +75,7 @@ const Chat = ({ route, navigation, isConnected }) => {
     setRecording(null);
 
     const audioMessage = {
-      _id: Math.random().toString(36).substring(7),
+      _id: `audio-${Date.now()}`, // Unique ID
       createdAt: new Date(),
       user: {
         _id: userId,
@@ -104,115 +97,12 @@ const Chat = ({ route, navigation, isConnected }) => {
     }
   };
 
-  // Render audio messages
-  const renderMessageAudio = (props) => {
-    const { currentMessage } = props;
-
-    if (currentMessage.audio) {
-      return (
-        <TouchableOpacity
-          accessible={true}
-          accessibilityLabel="Play audio message"
-          accessibilityHint="Tap to listen to the recorded audio message."
-          accessibilityRole="button"
-          style={styles.audioBubble}
-          onPress={() => playAudio(currentMessage.audio)}
-        >
-          <Text style={styles.audioText}>▶ Play Audio</Text>
-        </TouchableOpacity>
-      );
-    }
-    return null;
-  };
-
-  // Render system messages
-  const renderMessageSystem = (props) => {
-    const { currentMessage } = props;
-
-    if (currentMessage.system) {
-      return (
-        <View style={styles.systemMessageContainer} accessibilityLiveRegion="assertive">
-          <Text style={styles.systemMessageText}>{currentMessage.text}</Text>
-          <Text style={styles.systemMessageDate}>{currentMessage.createdAt.toLocaleString()}</Text>
-        </View>
-      );
-    }
-    return null;
-  };
-
-  const renderBubble = (props) => {
-    const { currentMessage } = props;
-
-    return (
-      <Bubble
-        {...props}
-        wrapperStyle={{
-          right: { backgroundColor: colorRightBubble },
-          left: { backgroundColor: colorLeftBubble },
-        }}
-      />
-    );
-  };
-
-  // Custom Input Toolbar with button to record audio message
-  const renderInputToolbar = (props) => {
-    if (isConnected === true) {
-      return (
-        <View style={styles.inputContainer}>
-          <TouchableOpacity
-            accessible={true}
-            accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
-            accessibilityHint={
-              recording ? 'Tap to stop recording your audio message' : 'Tap to start recording an audio message'
-            }
-            accessibilityRole="button"
-            onPress={recording ? stopRecording : startRecording}
-            style={[styles.audioButton, { backgroundColor: colorRightBubble }]}
-          >
-            <Text style={styles.audioButtonText}>{recording ? '■ Stop' : '🎤'}</Text>
-          </TouchableOpacity>
-
-          {/* Custom TextInput for typing messages */}
-          <TextInput
-            accessible={true}
-            accessibilityLabel="Type a message"
-            accessibilityHint="You can type your message here."
-            style={styles.textInput}
-            value={text} // Bind text state to the TextInput value
-            onChangeText={setText} // Update text state on change
-            placeholder="Type a message..."
-            placeholderTextColor="#888"
-            returnKeyType="send"
-            onSubmitEditing={() => {
-              if (text.trim()) {
-                const newMessage = {
-                  _id: Math.random().toString(36).substring(7),
-                  text,
-                  createdAt: new Date(),
-                  user: {
-                    _id: userId,
-                    name: name,
-                    avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
-                  },
-                };
-                onSend([newMessage]);
-                setText(''); // Reset text input after sending
-              }
-            }}
-          />
-        </View>
-      );
-    }
-  };
-
   const onSend = (newMessages) => {
     addDoc(collection(db, 'messages'), newMessages[0]);
   };
 
   // Setting the Messages shown in the chat
   let unsubMessages;
-
-  //Alert.alert('Network Connection', `isConnected is: ${String(isConnected)}`);
 
   useEffect(() => {
     navigation.setOptions({ title: name });
@@ -253,6 +143,11 @@ const Chat = ({ route, navigation, isConnected }) => {
           text: `Welcome to the chat, ${name}!`,
           createdAt: new Date(),
           system: true,
+          user: {
+            _id: userId,
+            name: name,
+            avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
+          },
         });
       } catch (error) {
         console.log('Error sending system message: ', error);
@@ -269,7 +164,6 @@ const Chat = ({ route, navigation, isConnected }) => {
   useEffect(() => {
     // Find the index of the selected background color
     const index = backgroundColors.indexOf(chatBgColor);
-
     // Set the corresponding speech bubble color or default to orange
     setColorRightBubble(index !== -1 ? speechBubbleColors[index] : 'F6E71D');
   }, []);
@@ -289,6 +183,67 @@ const Chat = ({ route, navigation, isConnected }) => {
     setMessages(JSON.parse(cachedLists));
   };
 
+  const renderInputToolbar = (props) => {
+    if (isConnected === true) return <InputToolbar {...props} />;
+    else return null;
+  };
+
+  const renderBubble = (props) => {
+    const { currentMessage } = props;
+    return (
+      <Bubble
+        {...props}
+        wrapperStyle={{
+          right: { backgroundColor: colorRightBubble },
+          left: { backgroundColor: colorLeftBubble },
+        }}
+      />
+    );
+  };
+
+  const renderCustomActions = (props) => {
+    return <CustomActions onSend={onSend} {...props} />;
+  };
+
+  const renderCustomView = (props) => {
+    const { currentMessage } = props;
+    if (currentMessage.location) {
+      return (
+        <MapView
+          style={{ width: 150, height: 100, borderRadius: 13, margin: 3 }}
+          region={{
+            latitude: currentMessage.location.latitude,
+            longitude: currentMessage.location.longitude,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        />
+      );
+    }
+    return null;
+  };
+
+  // Render audio messages
+  const renderMessageAudio = (props) => {
+    const { currentMessage } = props;
+
+    if (currentMessage.audio) {
+      return (
+        <TouchableOpacity
+          accessible={true}
+          accessibilityLabel="Play audio message"
+          accessibilityHint="Tap to listen to the recorded audio message."
+          accessibilityRole="button"
+          style={styles.audioBubble}
+          onPress={() => playAudio(currentMessage.audio)}
+        >
+          <Text style={styles.audioText}>▶ Play Audio</Text>
+        </TouchableOpacity>
+      );
+    }
+    return null;
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: chatBgColor }]}
@@ -298,16 +253,17 @@ const Chat = ({ route, navigation, isConnected }) => {
       <GiftedChat
         messages={messages}
         onSend={(messages) => onSend(messages)}
+        alwaysShowSend
+        renderInputToolbar={renderInputToolbar}
+        renderBubble={renderBubble}
+        renderMessageAudio={renderMessageAudio} // Handles audio messages
+        renderActions={renderCustomActions} // The "plus" button actions
+        renderCustomView={renderCustomView}
         user={{
           _id: userId,
           name: name,
           avatar: 'https://gravatar.com/avatar/f6e096c0b9f684e13fd60dc5ad29be81?s=400&d=robohash&r=x',
         }}
-        renderBubble={renderBubble}
-        renderMessageAudio={renderMessageAudio} // Handles audio messages
-        renderInputToolbar={renderInputToolbar} // Custom input with audio button
-        renderMessageSystem={renderMessageSystem} // Custom system messages
-        alwaysShowSend
         accessibilityLabel="Chat interface"
         accessibilityHint="Displays and sends chat messages. You can type or send audio messages."
       />
@@ -317,9 +273,11 @@ const Chat = ({ route, navigation, isConnected }) => {
   );
 };
 
+// ----> STYLES (Mostly unchanged; we removed the now-unused inputContainer/audioButton, etc.) <----
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
   },
   audioBubble: {
     padding: 10,
@@ -329,50 +287,6 @@ const styles = StyleSheet.create({
   audioText: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    borderRadius: 25,
-    margin: 10,
-  },
-  audioButton: {
-    padding: 12,
-    borderRadius: 50,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  audioButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  textInput: {
-    flex: 1,
-    height: '100%',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    fontSize: 16,
-  },
-  inputToolbar: {
-    backgroundColor: 'transparent',
-  },
-  // System message styles
-  systemMessageContainer: {
-    backgroundColor: 'blue',
-    padding: 10,
-    borderRadius: 10,
-    marginVertical: 5,
-    alignItems: 'center',
-  },
-  systemMessageText: {
-    color: 'blue',
-  },
-  systemMessageDate: {
-    color: 'blue',
   },
 });
 
